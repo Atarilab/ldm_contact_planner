@@ -1,6 +1,10 @@
 # Created by https://www.toptal.com/developers/gitignore/api/linux,visualstudiocode,python,c++
 # Edit at https://www.toptal.com/developers/gitignore?templates=linux,visualstudiocode,python,c++
 
+### Custom ###
+./input
+./models
+
 ### C++ ###
 # Prerequisites
 *.d
