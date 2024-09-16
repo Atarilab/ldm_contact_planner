@@ -2,8 +2,8 @@
 # Edit at https://www.toptal.com/developers/gitignore?templates=linux,visualstudiocode,python,c++
 
 ### Custom ###
-./input
-./models
+input/*
+assets/*
 
 ### C++ ###
 # Prerequisites
