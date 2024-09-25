@@ -2,8 +2,12 @@
 # Edit at https://www.toptal.com/developers/gitignore?templates=linux,visualstudiocode,python,c++
 
 ### Custom ###
-input/*
-assets/*
+notebooks/flux/generate_images/*
+notebooks/metric3d/weight/*
+notebooks/metric3d/recon_cache/*
+notebooks/recon_cache/*
+notebooks/sapiens/assets/*
+notebooks/flux/generated_images/*
 
 ### C++ ###
 # Prerequisites
