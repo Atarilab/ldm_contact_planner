@@ -184,6 +184,53 @@ class scnGeomManager:
         )
         self.total_geoms += 1
 
+    def add_line(self, position=[0, 0, 0], rot=[1, 0, 0, 0, 1, 0, 0, 0, 1], 
+                 size=[0.0, 0.0, 1.0], rgba=[0.6796875, 0.79296875, 0.9765625, 1.0]):
+        """
+        Adds a plane at the given position with a normal and size. 
+        By default, it creates a horizontal plane at the origin.
+
+        Args:
+            position: The position of one end of the line.
+            rot: A flattened rotation matrix (9,1).
+            size: Length of the line ([1, 1, 0.01]).
+            rgba: The color of the plane (default is grey).
+        """
+
+        mujoco.mjv_initGeom(
+            self.viewer.user_scn.geoms[self.total_geoms],
+            type=mujoco.mjtGeom.mjGEOM_LINE,
+            size=size,
+            pos=position,
+            mat=rot,
+            rgba=rgba
+        )
+        self.total_geoms += 1
+
+    def add_frame(self, pos, xmat, size=0.1, joint_axis=None):
+        """
+        Adds a frame at the given position and orientation.
+        Args:
+            pos: The position of the frame in the world frame.
+            xmat: The orientation of the frame in the world frame (3,3 matrix).
+            size: The size of the frame.
+            joint_axis: The axis of the joint, this overrides  (optional).
+        """
+        xmat = np.array(xmat).reshape(3, 3)
+
+        if joint_axis is not None:
+            jaxis_mat = axis_to_rotation_matrix(joint_axis)
+            xmat = jaxis_mat
+
+        x_rot = axis_to_rotation_matrix(xmat[:, 0])
+        y_rot = axis_to_rotation_matrix(xmat[:, 1])
+        z_rot = axis_to_rotation_matrix(xmat[:, 2])
+
+        # Add lines for each axis
+        self.add_line(pos, x_rot.flatten(), [0.0, 0.0, size], [1.0, 0.0, 0.0, 1.0])  # Red for X-axis
+        self.add_line(pos, y_rot.flatten(), [0.0, 0.0, size], [0.0, 1.0, 0.0, 1.0])  # Green for Y-axis
+        self.add_line(pos, z_rot.flatten(), [0.0, 0.0, size], [0.0, 0.0, 1.0, 1.0])  # Blue for Z-axis
+
     def clear(self):
         """
         Clears all objects managed by this class.
@@ -198,30 +245,51 @@ class scnGeomManager:
         self.viewer.user_scn.ngeom = self.total_geoms
         self.viewer.sync()
 
-def axis_to_rotation_matrix(axis):
+def axis_to_rotation_matrix(axis, ref_axis=np.array([0, 0, 1])):
     """
-    Converts a given axis to a rotation matrix that aligns [0, 0, 1] with the given axis.
-    """
-    if np.allclose(axis, [0, 0, 1]):
-        return np.eye(3)
-    elif np.allclose(axis, [0, 0, -1]):
-        return np.array([
-            [-1.0, 0.0,  0.0],
-            [ 0.0, -1.0, 0.0],
-            [ 0.0, 0.0,  1.0]
-        ])
-    
-    axis = axis / np.linalg.norm(axis)
-    z_axis = np.array([0.0, 0.0, 1.0])
-    v = np.cross(z_axis, axis)
-    s = np.linalg.norm(v)
-    c = np.dot(z_axis, axis)
+    Converts a given axis to a rotation matrix that aligns the reference axis with the given axis.
 
-    vx = np.array([
+    Args:
+    axis (array-like): The target axis to align with.
+    ref_axis (array-like): The reference axis to be aligned. Default is [0, 0, 1].
+
+    Returns:
+    numpy.ndarray: A 3x3 rotation matrix.
+    """
+    # Convert to numpy arrays and normalize vectors
+    axis = np.array(axis)
+    ref_axis = np.array(ref_axis)
+    axis = axis / np.linalg.norm(axis)
+    ref_axis = ref_axis / np.linalg.norm(ref_axis)
+
+    # Check if vectors are already aligned
+    if np.allclose(axis, ref_axis):
+        return np.eye(3)
+
+    # Compute the cross product and other necessary values
+    v = np.cross(ref_axis, axis)
+    c = np.dot(ref_axis, axis)
+    s = np.linalg.norm(v)
+
+    if s == 0:  # Vectors are either the same or opposite
+        # If the vectors are opposite, we need to find a perpendicular axis for the 180-degree rotation
+        perp_axis = np.array([1, 0, 0]) if not np.allclose(ref_axis, [1, 0, 0]) else np.array([0, 1, 0])
+        perp_axis = perp_axis - perp_axis.dot(ref_axis) * ref_axis  # Make it perpendicular
+        perp_axis /= np.linalg.norm(perp_axis)
+        k = np.array([
+            [0, -perp_axis[2], perp_axis[1]],
+            [perp_axis[2], 0, -perp_axis[0]],
+            [-perp_axis[1], perp_axis[0], 0]
+        ])
+        return np.eye(3) + k @ k * 2  # 180-degree rotation
+
+    # Skew-symmetric matrix for Rodrigues' formula
+    k = np.array([
         [0, -v[2], v[1]],
         [v[2], 0, -v[0]],
         [-v[1], v[0], 0]
     ])
 
-    rotation_matrix = np.eye(3) + vx + np.dot(vx, vx) * ((1 - c) / (s ** 2))
+    # Rodrigues' rotation formula
+    rotation_matrix = np.eye(3) + k + ((1 - c) / (s ** 2)) * np.dot(k, k)
     return rotation_matrix
