@@ -207,26 +207,26 @@ class scnGeomManager:
         )
         self.total_geoms += 1
 
-    def add_frame(self, pos, xmat, size=0.1, joint_axis=None):
+    def add_frame(self, pos, xmat, size=0.1, axis=None):
         """
         Adds a frame at the given position and orientation.
         Args:
             pos: The position of the frame in the world frame.
             xmat: The orientation of the frame in the world frame (3,3 matrix).
             size: The size of the frame.
-            joint_axis: The axis of the joint, this overrides  (optional).
+            axis: The axis in world frame. This option is useful to  
+                  visualise joints.
         """
         xmat = np.array(xmat).reshape(3, 3)
 
-        if joint_axis is not None:
-            jaxis_mat = axis_to_rotation_matrix(joint_axis)
+        if axis is not None:
+            jaxis_mat = axis_to_rotation_matrix(axis)
             xmat = jaxis_mat
 
         x_rot = axis_to_rotation_matrix(xmat[:, 0])
         y_rot = axis_to_rotation_matrix(xmat[:, 1])
         z_rot = axis_to_rotation_matrix(xmat[:, 2])
 
-        # Add lines for each axis
         self.add_line(pos, x_rot.flatten(), [0.0, 0.0, size], [1.0, 0.0, 0.0, 1.0])  # Red for X-axis
         self.add_line(pos, y_rot.flatten(), [0.0, 0.0, size], [0.0, 1.0, 0.0, 1.0])  # Green for Y-axis
         self.add_line(pos, z_rot.flatten(), [0.0, 0.0, size], [0.0, 0.0, 1.0, 1.0])  # Blue for Z-axis
@@ -243,7 +243,6 @@ class scnGeomManager:
         Updates the viewer to reflect changes.
         """
         self.viewer.user_scn.ngeom = self.total_geoms
-        self.viewer.sync()
 
 def axis_to_rotation_matrix(axis, ref_axis=np.array([0, 0, 1])):
     """
@@ -256,7 +255,6 @@ def axis_to_rotation_matrix(axis, ref_axis=np.array([0, 0, 1])):
     Returns:
     numpy.ndarray: A 3x3 rotation matrix.
     """
-    # Convert to numpy arrays and normalize vectors
     axis = np.array(axis)
     ref_axis = np.array(ref_axis)
     axis = axis / np.linalg.norm(axis)
@@ -266,7 +264,6 @@ def axis_to_rotation_matrix(axis, ref_axis=np.array([0, 0, 1])):
     if np.allclose(axis, ref_axis):
         return np.eye(3)
 
-    # Compute the cross product and other necessary values
     v = np.cross(ref_axis, axis)
     c = np.dot(ref_axis, axis)
     s = np.linalg.norm(v)
@@ -283,7 +280,6 @@ def axis_to_rotation_matrix(axis, ref_axis=np.array([0, 0, 1])):
         ])
         return np.eye(3) + k @ k * 2  # 180-degree rotation
 
-    # Skew-symmetric matrix for Rodrigues' formula
     k = np.array([
         [0, -v[2], v[1]],
         [v[2], 0, -v[0]],
