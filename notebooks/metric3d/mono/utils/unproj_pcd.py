@@ -30,9 +30,12 @@ def reconstruct_pcd(depth, fx, fy, u0, v0, pcd_base=None, mask=None):
     if pcd_base is None:
         H, W = depth.shape
         pcd_base = get_pcd_base(H, W, u0, v0, fx, fy)
+        
     pcd = depth[:, :, None] * pcd_base
+    
     if mask:
         pcd[mask] = 0
+        
     return pcd
 
 
